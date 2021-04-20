@@ -40,6 +40,7 @@ mod entity_tag_error;
 use core::fmt::{self, Display, Formatter, Write};
 
 use alloc::borrow::Cow;
+use alloc::string::String;
 
 pub use entity_tag_error::EntityTagError;
 
