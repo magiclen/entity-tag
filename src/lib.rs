@@ -90,7 +90,7 @@ impl<'t> EntityTag<'t> {
     /// Construct a new EntityTag without checking.
     #[allow(clippy::missing_safety_doc)]
     #[inline]
-    pub unsafe fn with_str_unchecked<S: AsRef<str> + ?Sized>(weak: bool, tag: &'t S) -> Self {
+    pub unsafe fn with_str_unchecked<S: ?Sized + AsRef<str>>(weak: bool, tag: &'t S) -> Self {
         EntityTag {
             weak,
             tag: Cow::from(tag.as_ref()),
@@ -155,7 +155,7 @@ impl<'t> EntityTag<'t> {
 
     /// Construct a new EntityTag.
     #[inline]
-    pub fn with_str<S: AsRef<str> + ?Sized>(
+    pub fn with_str<S: ?Sized + AsRef<str>>(
         weak: bool,
         tag: &'t S,
     ) -> Result<Self, EntityTagError> {
@@ -227,7 +227,7 @@ impl<'t> EntityTag<'t> {
 
     /// Parse and construct a new EntityTag from a `str`.
     #[allow(clippy::should_implement_trait)]
-    pub fn from_str<S: AsRef<str> + ?Sized>(etag: &'t S) -> Result<Self, EntityTagError> {
+    pub fn from_str<S: ?Sized + AsRef<str>>(etag: &'t S) -> Result<Self, EntityTagError> {
         let s = etag.as_ref();
 
         let (weak, opaque_tag) = if let Some(opaque_tag) = s.strip_prefix("W/") {
