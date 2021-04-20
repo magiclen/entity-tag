@@ -1,0 +1,23 @@
+[package]
+name = "entity-tag"
+version = "0.1.0"
+authors = ["Magic Len <len@magiclen.org>"]
+edition = "2018"
+repository = "https://github.com/magiclen/entity-tag"
+homepage = "https://magiclen.org/entity-tag"
+keywords = ["etag", "if-match", "if-none-match"]
+categories = ["no-std", "parser-implementations", "data-structures", "network-programming"]
+description = "This crate provides a `EntityTag` structure and functions to deal with the ETag header field of HTTP."
+readme = "README.md"
+license = "MIT"
+include = ["src/**/*", "Cargo.toml", "README.md", "LICENSE"]
+
+[badges.travis-ci]
+repository = "magiclen/entity-tag"
+branch = "master"
+
+[dependencies]
+
+[features]
+default = ["std"]
+std = []
