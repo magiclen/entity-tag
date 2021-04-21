@@ -1,7 +1,7 @@
 entity-tag
 ====================
 
-[![Build Status](https://travis-ci.org/magiclen/entity-tag.svg?branch=master)](https://travis-ci.org/magiclen/entity-tag)
+[![CI](https://github.com/magiclen/entity-tag/actions/workflows/ci.yml/badge.svg)](https://github.com/magiclen/entity-tag/actions/workflows/ci.yml)
 
 This crate provides a `EntityTag` structure and functions to deal with the ETag header field of HTTP.
 
