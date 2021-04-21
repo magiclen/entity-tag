@@ -1,4 +1,4 @@
-entity-tag
+Entity Tag
 ====================
 
 [![CI](https://github.com/magiclen/entity-tag/actions/workflows/ci.yml/badge.svg)](https://github.com/magiclen/entity-tag/actions/workflows/ci.yml)

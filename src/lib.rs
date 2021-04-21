@@ -1,5 +1,5 @@
 /*!
-# entity-tag
+# Entity Tag
 
 This crate provides a `EntityTag` structure and functions to deal with the ETag header field of HTTP.
 
