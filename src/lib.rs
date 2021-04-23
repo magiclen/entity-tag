@@ -18,6 +18,15 @@ assert_eq!(false, etag2.weak);
 
 assert!(etag1.weak_eq(&etag2));
 assert!(etag1.strong_ne(&etag2));
+
+let etag3 = EntityTag::from_data(&[102, 111, 111]);
+assert_eq!("\"j4VF2Hjg0No\"", etag3.to_string());
+
+# #[cfg(feature = "std")]
+# {
+let etag4 = EntityTag::from_file_meta(&std::fs::File::open("tests/data/P1060382.JPG").unwrap().metadata().unwrap());
+assert_eq!("W/\"CmgjkoKAfwQ\"", etag4.to_string());
+# }
 ```
 
 ## No Std
@@ -35,14 +44,26 @@ default-features = false
 
 extern crate alloc;
 
+extern crate base64;
+extern crate wyhash;
+
 mod entity_tag_error;
 
 use core::fmt::{self, Display, Formatter, Write};
+use core::hash::Hasher;
 
 use alloc::borrow::Cow;
 use alloc::string::String;
 
+#[cfg(feature = "std")]
+use std::fs::Metadata;
+
+#[cfg(feature = "std")]
+use std::time::UNIX_EPOCH;
+
 pub use entity_tag_error::EntityTagError;
+
+use wyhash::WyHash;
 
 /// An entity tag, defined in [RFC7232](https://tools.ietf.org/html/rfc7232#section-2.3).
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -243,6 +264,46 @@ impl<'t> EntityTag<'t> {
             tag: Cow::from(&opaque_tag[1..(opaque_tag.len() - 1)]),
         })
     }
+
+    /// Construct a strong EntityTag.
+    #[inline]
+    pub fn from_data<S: ?Sized + AsRef<[u8]>>(data: &S) -> Self {
+        let mut hasher = WyHash::with_seed(3);
+        hasher.write(data.as_ref());
+
+        let tag = base64::encode_config(hasher.finish().to_le_bytes(), base64::STANDARD_NO_PAD);
+
+        EntityTag {
+            weak: false,
+            tag: Cow::from(tag),
+        }
+    }
+
+    #[cfg(feature = "std")]
+    /// Construct a weak EntityTag.
+    pub fn from_file_meta(metadata: &Metadata) -> Self {
+        let mut hasher = WyHash::with_seed(4);
+
+        hasher.write(&metadata.len().to_le_bytes());
+
+        if let Ok(modified_time) = metadata.modified() {
+            if let Ok(time) = modified_time.duration_since(UNIX_EPOCH) {
+                hasher.write(&time.as_nanos().to_le_bytes());
+            } else {
+                hasher.write(b"-");
+
+                let time = UNIX_EPOCH.duration_since(modified_time).unwrap();
+                hasher.write(&time.as_nanos().to_le_bytes());
+            }
+        }
+
+        let tag = base64::encode_config(hasher.finish().to_le_bytes(), base64::STANDARD_NO_PAD);
+
+        EntityTag {
+            weak: true,
+            tag: Cow::from(tag),
+        }
+    }
 }
 
 impl<'t> EntityTag<'t> {
@@ -250,6 +311,12 @@ impl<'t> EntityTag<'t> {
     #[inline]
     pub fn get_tag(&'t self) -> &'t str {
         self.tag.as_ref()
+    }
+
+    /// Into the tag. The double quotes are not included.
+    #[inline]
+    pub fn into_tag(self) -> Cow<'t, str> {
+        self.tag
     }
 }
 

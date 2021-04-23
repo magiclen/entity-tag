@@ -119,3 +119,18 @@ fn etag_parse_failures() {
     assert_eq!(Err(EntityTagError::MissingStartingDoubleQuote), EntityTag::from_str("no-dquotes"));
     assert_eq!(Err(EntityTagError::MissingClosingDoubleQuote), EntityTag::from_str("\"no-dquote"));
 }
+
+#[test]
+fn from_data() {
+    assert_eq!("\"oC5gwMEUN28\"", EntityTag::from_data(&[1, 2, 3, 4]).to_string());
+}
+
+#[cfg(feature = "std")]
+#[test]
+fn from_file_meta() {
+    let file = std::fs::File::open("tests/data/P1060382.JPG").unwrap();
+
+    let metadata = file.metadata().unwrap();
+
+    assert_eq!("W/\"CmgjkoKAfwQ\"", EntityTag::from_file_meta(&metadata).to_string());
+}
