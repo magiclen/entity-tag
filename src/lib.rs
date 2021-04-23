@@ -25,7 +25,7 @@ assert_eq!("\"j4VF2Hjg0No\"", etag3.to_string());
 # #[cfg(feature = "std")]
 # {
 let etag4 = EntityTag::from_file_meta(&std::fs::File::open("tests/data/P1060382.JPG").unwrap().metadata().unwrap());
-assert_eq!("W/\"CmgjkoKAfwQ\"", etag4.to_string());
+println!("{}", etag4) // W/"CmgjkoKAfwQ"
 # }
 ```
 

@@ -132,5 +132,7 @@ fn from_file_meta() {
 
     let metadata = file.metadata().unwrap();
 
-    assert_eq!("W/\"CmgjkoKAfwQ\"", EntityTag::from_file_meta(&metadata).to_string());
+    let etag = EntityTag::from_file_meta(&metadata);
+
+    assert_eq!(true, etag.weak);
 }
