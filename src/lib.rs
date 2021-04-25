@@ -101,7 +101,7 @@ impl<'t> EntityTag<'t> {
     /// Construct a new EntityTag without checking.
     #[allow(clippy::missing_safety_doc)]
     #[inline]
-    pub unsafe fn with_string_unchecked<S: Into<String>>(weak: bool, tag: S) -> Self {
+    pub unsafe fn with_string_unchecked<S: Into<String>>(weak: bool, tag: S) -> EntityTag<'static> {
         EntityTag {
             weak,
             tag: Cow::from(tag.into()),
@@ -158,7 +158,7 @@ impl<'t> EntityTag<'t> {
     pub fn with_string<S: AsRef<str> + Into<String>>(
         weak: bool,
         tag: S,
-    ) -> Result<Self, EntityTagError> {
+    ) -> Result<EntityTag<'static>, EntityTagError> {
         let quoted = Self::check_tag(tag.as_ref())?;
 
         let mut tag = tag.into();
@@ -213,7 +213,9 @@ impl<'t> EntityTag<'t> {
     }
 
     /// Parse and construct a new EntityTag from a `String`.
-    pub fn from_string<S: AsRef<str> + Into<String>>(etag: S) -> Result<Self, EntityTagError> {
+    pub fn from_string<S: AsRef<str> + Into<String>>(
+        etag: S,
+    ) -> Result<EntityTag<'static>, EntityTagError> {
         let weak = {
             let s = etag.as_ref();
 
@@ -267,7 +269,7 @@ impl<'t> EntityTag<'t> {
 
     /// Construct a strong EntityTag.
     #[inline]
-    pub fn from_data<S: ?Sized + AsRef<[u8]>>(data: &S) -> Self {
+    pub fn from_data<S: ?Sized + AsRef<[u8]>>(data: &S) -> EntityTag<'static> {
         let mut hasher = WyHash::with_seed(3);
         hasher.write(data.as_ref());
 
@@ -281,7 +283,7 @@ impl<'t> EntityTag<'t> {
 
     #[cfg(feature = "std")]
     /// Construct a weak EntityTag.
-    pub fn from_file_meta(metadata: &Metadata) -> Self {
+    pub fn from_file_meta(metadata: &Metadata) -> EntityTag<'static> {
         let mut hasher = WyHash::with_seed(4);
 
         hasher.write(&metadata.len().to_le_bytes());
