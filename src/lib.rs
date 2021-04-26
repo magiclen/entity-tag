@@ -320,6 +320,17 @@ impl<'t> EntityTag<'t> {
     pub fn into_tag(self) -> Cow<'t, str> {
         self.tag
     }
+
+    /// Extracts the owned data.
+    #[inline]
+    pub fn into_owned(self) -> EntityTag<'static> {
+        let tag = self.tag.into_owned();
+
+        EntityTag {
+            weak: self.weak,
+            tag: Cow::from(tag),
+        }
+    }
 }
 
 impl<'t> EntityTag<'t> {
