@@ -6,8 +6,6 @@ This crate provides a `EntityTag` structure and functions to deal with the ETag 
 ## Examples
 
 ```rust
-extern crate entity_tag;
-
 use entity_tag::EntityTag;
 
 let etag1 = EntityTag::with_str(true, "foo").unwrap();
@@ -20,7 +18,7 @@ assert!(etag1.weak_eq(&etag2));
 assert!(etag1.strong_ne(&etag2));
 
 let etag3 = EntityTag::from_data(&[102, 111, 111]);
-assert_eq!("\"j4VF2Hjg0No\"", etag3.to_string());
+assert_eq!("\"bp523oWgr0M\"", etag3.to_string());
 
 # #[cfg(feature = "std")]
 # {
@@ -44,9 +42,6 @@ default-features = false
 
 extern crate alloc;
 
-extern crate base64;
-extern crate wyhash;
-
 mod entity_tag_error;
 
 use core::fmt::{self, Display, Formatter, Write};
@@ -63,7 +58,7 @@ use std::time::UNIX_EPOCH;
 
 pub use entity_tag_error::EntityTagError;
 
-use wyhash::WyHash;
+use ahash::AHasher;
 
 /// An entity tag, defined in [RFC7232](https://tools.ietf.org/html/rfc7232#section-2.3).
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -270,7 +265,7 @@ impl<'t> EntityTag<'t> {
     /// Construct a strong EntityTag.
     #[inline]
     pub fn from_data<S: ?Sized + AsRef<[u8]>>(data: &S) -> EntityTag<'static> {
-        let mut hasher = WyHash::with_seed(3);
+        let mut hasher = AHasher::new_with_keys(1, 2);
         hasher.write(data.as_ref());
 
         let tag = base64::encode_config(hasher.finish().to_le_bytes(), base64::STANDARD_NO_PAD);
@@ -284,7 +279,7 @@ impl<'t> EntityTag<'t> {
     #[cfg(feature = "std")]
     /// Construct a weak EntityTag.
     pub fn from_file_meta(metadata: &Metadata) -> EntityTag<'static> {
-        let mut hasher = WyHash::with_seed(4);
+        let mut hasher = AHasher::new_with_keys(3, 4);
 
         hasher.write(&metadata.len().to_le_bytes());
 

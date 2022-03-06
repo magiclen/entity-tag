@@ -1,8 +1,8 @@
 [package]
 name = "entity-tag"
-version = "0.1.5"
+version = "0.1.6"
 authors = ["Magic Len <len@magiclen.org>"]
-edition = "2018"
+edition = "2021"
 repository = "https://github.com/magiclen/entity-tag"
 homepage = "https://magiclen.org/entity-tag"
 keywords = ["etag", "if-match", "if-none-match"]
@@ -14,7 +14,7 @@ include = ["src/**/*", "Cargo.toml", "README.md", "LICENSE"]
 
 [dependencies]
 base64 = { version = "0.13", default-features = false, features = ["alloc"] }
-wyhash = "0.5"
+ahash = { version = "0.7.6", default-features = false }
 
 [features]
 default = ["std"]

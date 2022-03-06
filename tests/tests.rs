@@ -1,11 +1,9 @@
-extern crate entity_tag;
-
 use entity_tag::*;
 
 #[test]
 fn cmp() {
-    const FIRST: &'static str = "FIRST";
-    const SECOND: &'static str = "SECOND";
+    const FIRST: &str = "FIRST";
+    const SECOND: &str = "SECOND";
 
     let etag1 = EntityTag::with_str(true, FIRST).unwrap();
     let etag2 = EntityTag::with_str(true, FIRST).unwrap();
@@ -122,7 +120,7 @@ fn etag_parse_failures() {
 
 #[test]
 fn from_data() {
-    assert_eq!("\"oC5gwMEUN28\"", EntityTag::from_data(&[1, 2, 3, 4]).to_string());
+    assert_eq!("\"fItPN8Q0yU4\"", EntityTag::from_data(&[1, 2, 3, 4]).to_string());
 }
 
 #[cfg(feature = "std")]
@@ -134,5 +132,5 @@ fn from_file_meta() {
 
     let etag = EntityTag::from_file_meta(&metadata);
 
-    assert_eq!(true, etag.weak);
+    assert!(etag.weak);
 }

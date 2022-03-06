@@ -8,8 +8,6 @@ This crate provides a `EntityTag` structure and functions to deal with the ETag 
 ## Examples
 
 ```rust
-extern crate entity_tag;
-
 use entity_tag::EntityTag;
 
 let etag1 = EntityTag::with_str(true, "foo").unwrap();
@@ -22,7 +20,7 @@ assert!(etag1.weak_eq(&etag2));
 assert!(etag1.strong_ne(&etag2));
 
 let etag3 = EntityTag::from_data(true, &[102, 111, 111]).unwrap();
-assert_eq!("W/\"j4VF2Hjg0No\"", etag3.to_string());
+assert_eq!("W/\"bp523oWgr0M\"", etag3.to_string());
 
 let etag4 = EntityTag::from_file_meta(&std::fs::File::open("tests/data/P1060382.JPG").unwrap().metadata().unwrap());
 println!("{}", etag4) // W/"CmgjkoKAfwQ"
