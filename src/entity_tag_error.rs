@@ -1,5 +1,4 @@
 use core::fmt::{self, Display, Formatter};
-
 #[cfg(feature = "std")]
 use std::error::Error;
 
@@ -17,10 +16,10 @@ impl Display for EntityTagError {
         match self {
             EntityTagError::MissingStartingDoubleQuote => {
                 f.write_str("the opaque tag misses the starting double quote")
-            }
+            },
             EntityTagError::MissingClosingDoubleQuote => {
                 f.write_str("the opaque tag misses the closing double quote")
-            }
+            },
             EntityTagError::InvalidTag => f.write_str("invalid tag"),
         }
     }

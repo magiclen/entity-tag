@@ -18,12 +18,12 @@ assert!(etag1.weak_eq(&etag2));
 assert!(etag1.strong_ne(&etag2));
 
 let etag3 = EntityTag::from_data(&[102, 111, 111]);
-assert_eq!("\"bp523oWgr0M\"", etag3.to_string());
+assert_eq!("\"972Sf7Z4eu8\"", etag3.to_string());
 
 # #[cfg(feature = "std")]
 # {
 let etag4 = EntityTag::from_file_meta(&std::fs::File::open("tests/data/P1060382.JPG").unwrap().metadata().unwrap());
-println!("{}", etag4) // W/"CmgjkoKAfwQ"
+println!("{}", etag4) // W/"HRScBWR0Mf4"
 # }
 ```
 
@@ -44,21 +44,19 @@ extern crate alloc;
 
 mod entity_tag_error;
 
-use core::fmt::{self, Display, Formatter, Write};
-use core::hash::Hasher;
-
-use alloc::borrow::Cow;
-use alloc::string::String;
-
+use alloc::{borrow::Cow, string::String};
+use core::{
+    fmt::{self, Display, Formatter, Write},
+    hash::Hasher,
+};
 #[cfg(feature = "std")]
 use std::fs::Metadata;
-
 #[cfg(feature = "std")]
 use std::time::UNIX_EPOCH;
 
+use base64::Engine;
 pub use entity_tag_error::EntityTagError;
-
-use ahash::AHasher;
+use highway::HighwayHasher;
 
 /// An entity tag, defined in [RFC7232](https://tools.ietf.org/html/rfc7232#section-2.3).
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -66,7 +64,7 @@ pub struct EntityTag<'t> {
     /// Whether to have a weakness indicator.
     pub weak: bool,
     /// *etagc
-    tag: Cow<'t, str>,
+    tag:      Cow<'t, str>,
 }
 
 impl<'t> EntityTag<'t> {
@@ -125,11 +123,8 @@ impl<'t> EntityTag<'t> {
     }
 
     fn check_tag(s: &str) -> Result<bool, EntityTagError> {
-        let (s, quoted) = if let Some(stripped) = s.strip_prefix('"') {
-            (stripped, true)
-        } else {
-            (s, false)
-        };
+        let (s, quoted) =
+            if let Some(stripped) = s.strip_prefix('"') { (stripped, true) } else { (s, false) };
 
         let s = if quoted {
             if let Some(stripped) = s.strip_suffix('"') {
@@ -179,11 +174,7 @@ impl<'t> EntityTag<'t> {
 
         let quoted = Self::check_tag(tag)?;
 
-        let tag = if quoted {
-            &tag[1..(tag.len() - 1)]
-        } else {
-            tag
-        };
+        let tag = if quoted { &tag[1..(tag.len() - 1)] } else { tag };
 
         Ok(EntityTag {
             weak,
@@ -265,21 +256,21 @@ impl<'t> EntityTag<'t> {
     /// Construct a strong EntityTag.
     #[inline]
     pub fn from_data<S: ?Sized + AsRef<[u8]>>(data: &S) -> EntityTag<'static> {
-        let mut hasher = AHasher::new_with_keys(1, 2);
+        let mut hasher = HighwayHasher::default();
         hasher.write(data.as_ref());
 
-        let tag = base64::encode_config(hasher.finish().to_le_bytes(), base64::STANDARD_NO_PAD);
+        let tag =
+            base64::engine::general_purpose::STANDARD_NO_PAD.encode(hasher.finish().to_le_bytes());
 
         EntityTag {
-            weak: false,
-            tag: Cow::from(tag),
+            weak: false, tag: Cow::from(tag)
         }
     }
 
     #[cfg(feature = "std")]
     /// Construct a weak EntityTag.
     pub fn from_file_meta(metadata: &Metadata) -> EntityTag<'static> {
-        let mut hasher = AHasher::new_with_keys(3, 4);
+        let mut hasher = HighwayHasher::default();
 
         hasher.write(&metadata.len().to_le_bytes());
 
@@ -294,11 +285,11 @@ impl<'t> EntityTag<'t> {
             }
         }
 
-        let tag = base64::encode_config(hasher.finish().to_le_bytes(), base64::STANDARD_NO_PAD);
+        let tag =
+            base64::engine::general_purpose::STANDARD_NO_PAD.encode(hasher.finish().to_le_bytes());
 
         EntityTag {
-            weak: true,
-            tag: Cow::from(tag),
+            weak: true, tag: Cow::from(tag)
         }
     }
 }
@@ -322,8 +313,7 @@ impl<'t> EntityTag<'t> {
         let tag = self.tag.into_owned();
 
         EntityTag {
-            weak: self.weak,
-            tag: Cow::from(tag),
+            weak: self.weak, tag: Cow::from(tag)
         }
     }
 }
@@ -331,25 +321,25 @@ impl<'t> EntityTag<'t> {
 impl<'t> EntityTag<'t> {
     /// For strong comparison two entity-tags are equivalent if both are not weak and their opaque-tags match character-by-character.
     #[inline]
-    pub fn strong_eq<'v>(&self, other: &EntityTag<'v>) -> bool {
+    pub fn strong_eq(&self, other: &EntityTag) -> bool {
         !self.weak && !other.weak && self.tag == other.tag
     }
 
     /// For weak comparison two entity-tags are equivalent if their opaque-tags match character-by-character, regardless of either or both being tagged as "weak".
     #[inline]
-    pub fn weak_eq<'v>(&self, other: &EntityTag<'v>) -> bool {
+    pub fn weak_eq(&self, other: &EntityTag) -> bool {
         self.tag == other.tag
     }
 
     /// The inverse of `strong_eq`.
     #[inline]
-    pub fn strong_ne<'v>(&self, other: &EntityTag<'v>) -> bool {
+    pub fn strong_ne(&self, other: &EntityTag) -> bool {
         !self.strong_eq(other)
     }
 
     /// The inverse of `weak_eq`.
     #[inline]
-    pub fn weak_ne<'v>(&self, other: &EntityTag<'v>) -> bool {
+    pub fn weak_ne(&self, other: &EntityTag) -> bool {
         !self.weak_eq(other)
     }
 }

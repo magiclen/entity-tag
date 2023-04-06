@@ -120,7 +120,7 @@ fn etag_parse_failures() {
 
 #[test]
 fn from_data() {
-    assert_eq!("\"fItPN8Q0yU4\"", EntityTag::from_data(&[1, 2, 3, 4]).to_string());
+    assert_eq!("\"SE+HLI9tiaw\"", EntityTag::from_data(&[1, 2, 3, 4]).to_string());
 }
 
 #[cfg(feature = "std")]
