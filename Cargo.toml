@@ -9,7 +9,6 @@ homepage = "https://magiclen.org/entity-tag"
 keywords = ["etag", "if-match", "if-none-match"]
 categories = ["no-std", "parser-implementations", "data-structures", "network-programming"]
 description = "This crate provides a `EntityTag` structure and functions to deal with the ETag header field of HTTP."
-readme = "README.md"
 license = "MIT"
 include = ["src/**/*", "Cargo.toml", "README.md", "LICENSE"]
 
