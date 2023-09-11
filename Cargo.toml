@@ -1,9 +1,9 @@
 [package]
 name = "entity-tag"
-version = "0.1.7"
+version = "0.1.8"
 authors = ["Magic Len <len@magiclen.org>"]
 edition = "2021"
-rust-version = "1.57"
+rust-version = "1.56"
 repository = "https://github.com/magiclen/entity-tag"
 homepage = "https://magiclen.org/entity-tag"
 keywords = ["etag", "if-match", "if-none-match"]
