@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use entity_tag::*;
 
 #[test]
@@ -109,6 +111,45 @@ fn etag_parse_success() {
         EntityTag::with_str(true, "").unwrap(),
         EntityTag::with_string(true, "\"\"").unwrap()
     );
+}
+
+#[test]
+fn etag_parse_from_str_trait() {
+    assert_eq!(
+        EntityTag::with_string(false, "foobar").unwrap(),
+        "\"foobar\"".parse::<EntityTag>().unwrap()
+    );
+    assert_eq!(
+        EntityTag::with_string(true, "weak-etag").unwrap(),
+        "W/\"weak-etag\"".parse::<EntityTag>().unwrap()
+    );
+}
+
+#[test]
+fn etag_round_trip() {
+    for input in ["\"foobar\"", "W/\"weak-etag\"", "\"étiquette\""] {
+        let etag = EntityTag::from_str(input).unwrap();
+        let output = etag.to_string();
+
+        assert_eq!(etag, output.parse::<EntityTag>().unwrap());
+    }
+}
+
+#[test]
+fn get_tag() {
+    assert_eq!("foobar", EntityTag::with_str(false, "foobar").unwrap().get_tag());
+    assert_eq!("owned", EntityTag::with_string(false, "owned").unwrap().get_tag());
+    assert_eq!("parsed", EntityTag::from_str("\"parsed\"").unwrap().get_tag());
+    assert_eq!("SE+HLI9tiaw", EntityTag::from_data(&[1, 2, 3, 4]).get_tag());
+}
+
+#[test]
+fn hash_set_lookup() {
+    let mut etags = HashSet::new();
+
+    etags.insert(EntityTag::with_string(false, "foobar").unwrap());
+
+    assert!(etags.contains(&EntityTag::from_string("\"foobar\"").unwrap()));
 }
 
 #[test]

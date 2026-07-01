@@ -51,6 +51,7 @@ use core::{
 };
 #[cfg(feature = "std")]
 use std::fs::Metadata;
+use std::str::FromStr;
 #[cfg(feature = "std")]
 use std::time::UNIX_EPOCH;
 
@@ -59,11 +60,11 @@ pub use entity_tag_error::EntityTagError;
 use highway::HighwayHasher;
 
 /// An entity tag, defined in [RFC7232](https://tools.ietf.org/html/rfc7232#section-2.3).
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub struct EntityTag<'t> {
     /// Whether to have a weakness indicator.
     pub weak: bool,
-    /// *etagc
+    /// The opaque tag content without the surrounding double quotes.
     tag:      Cow<'t, str>,
 }
 
@@ -74,7 +75,9 @@ impl<'t> EntityTag<'t> {
 
 impl<'t> EntityTag<'t> {
     /// Construct a new EntityTag without checking.
-    #[allow(clippy::missing_safety_doc)]
+    ///
+    /// # Safety
+    /// The caller must ensure `tag` is a valid unquoted entity-tag value, because this function skips all validation.
     #[inline]
     pub const unsafe fn new_unchecked(weak: bool, tag: Cow<'t, str>) -> Self {
         EntityTag {
@@ -92,7 +95,9 @@ impl<'t> EntityTag<'t> {
 
 impl<'t> EntityTag<'t> {
     /// Construct a new EntityTag without checking.
-    #[allow(clippy::missing_safety_doc)]
+    ///
+    /// # Safety
+    /// The caller must ensure `tag` is a valid unquoted entity-tag value, because this function skips all validation.
     #[inline]
     pub unsafe fn with_string_unchecked<S: Into<String>>(weak: bool, tag: S) -> EntityTag<'static> {
         EntityTag {
@@ -102,7 +107,9 @@ impl<'t> EntityTag<'t> {
     }
 
     /// Construct a new EntityTag without checking.
-    #[allow(clippy::missing_safety_doc)]
+    ///
+    /// # Safety
+    /// The caller must ensure `tag` is a valid unquoted entity-tag value, because this function skips all validation.
     #[inline]
     pub unsafe fn with_str_unchecked<S: ?Sized + AsRef<str>>(weak: bool, tag: &'t S) -> Self {
         EntityTag {
@@ -143,7 +150,7 @@ impl<'t> EntityTag<'t> {
         Ok(quoted)
     }
 
-    /// Construct a new EntityTag.
+    /// Construct a new EntityTag from an opaque tag, with or without surrounding double quotes.
     #[inline]
     pub fn with_string<S: AsRef<str> + Into<String>>(
         weak: bool,
@@ -164,7 +171,7 @@ impl<'t> EntityTag<'t> {
         })
     }
 
-    /// Construct a new EntityTag.
+    /// Construct a new EntityTag from an opaque tag, with or without surrounding double quotes.
     #[inline]
     pub fn with_str<S: ?Sized + AsRef<str>>(
         weak: bool,
@@ -198,7 +205,7 @@ impl<'t> EntityTag<'t> {
         }
     }
 
-    /// Parse and construct a new EntityTag from a `String`.
+    /// Parse and construct a new EntityTag from a full ETag header value.
     pub fn from_string<S: AsRef<str> + Into<String>>(
         etag: S,
     ) -> Result<EntityTag<'static>, EntityTagError> {
@@ -221,9 +228,7 @@ impl<'t> EntityTag<'t> {
         tag.remove(tag.len() - 1);
 
         if weak {
-            unsafe {
-                tag.as_mut_vec().drain(0..3);
-            }
+            tag.replace_range(..3, "");
         } else {
             tag.remove(0);
         }
@@ -234,7 +239,7 @@ impl<'t> EntityTag<'t> {
         })
     }
 
-    /// Parse and construct a new EntityTag from a `str`.
+    /// Parse and construct a new EntityTag from a full ETag header value.
     #[allow(clippy::should_implement_trait)]
     pub fn from_str<S: ?Sized + AsRef<str>>(etag: &'t S) -> Result<Self, EntityTagError> {
         let s = etag.as_ref();
@@ -275,13 +280,12 @@ impl<'t> EntityTag<'t> {
         hasher.write(&metadata.len().to_le_bytes());
 
         if let Ok(modified_time) = metadata.modified() {
-            if let Ok(time) = modified_time.duration_since(UNIX_EPOCH) {
-                hasher.write(&time.as_nanos().to_le_bytes());
-            } else {
-                hasher.write(b"-");
-
-                let time = UNIX_EPOCH.duration_since(modified_time).unwrap();
-                hasher.write(&time.as_nanos().to_le_bytes());
+            match modified_time.duration_since(UNIX_EPOCH) {
+                Ok(time) => hasher.write(&time.as_nanos().to_le_bytes()),
+                Err(err) => {
+                    hasher.write(b"-");
+                    hasher.write(&err.duration().as_nanos().to_le_bytes());
+                },
             }
         }
 
@@ -297,7 +301,7 @@ impl<'t> EntityTag<'t> {
 impl<'t> EntityTag<'t> {
     /// Get the tag. The double quotes are not included.
     #[inline]
-    pub fn get_tag(&'t self) -> &'t str {
+    pub fn get_tag(&self) -> &str {
         self.tag.as_ref()
     }
 
@@ -341,6 +345,15 @@ impl<'t> EntityTag<'t> {
     #[inline]
     pub fn weak_ne(&self, other: &EntityTag) -> bool {
         !self.weak_eq(other)
+    }
+}
+
+impl FromStr for EntityTag<'static> {
+    type Err = EntityTagError;
+
+    #[inline]
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        EntityTag::from_string(s)
     }
 }
 
