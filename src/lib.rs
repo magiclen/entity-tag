@@ -17,13 +17,28 @@ assert_eq!(false, etag2.weak);
 assert!(etag1.weak_eq(&etag2));
 assert!(etag1.strong_ne(&etag2));
 
-let etag3 = EntityTag::from_data(&[102, 111, 111]);
-assert_eq!("\"972Sf7Z4eu8\"", etag3.to_string());
-
-# #[cfg(feature = "std")]
+# #[cfg(feature = "weak-hasher")]
 # {
-let etag4 = EntityTag::from_file_meta(&std::fs::File::open("tests/data/P1060382.JPG").unwrap().metadata().unwrap());
-println!("{}", etag4) // W/"HRScBWR0Mf4"
+let etag3 = EntityTag::from_data(&[102, 111, 111]);
+assert_eq!(r#"W/"ea75LoNFQSGrbl9kB359ig""#, etag3.to_string());
+# }
+
+# #[cfg(feature = "strong-hasher")]
+# {
+let etag4 = EntityTag::from_data_strong(&[102, 111, 111]);
+assert_eq!(r#""BOC7OfMLGj/rifU2yTvhUFVILfdIZ0sA0m5adXd3Auk""#, etag4.to_string());
+# }
+
+# #[cfg(all(feature = "std", feature = "weak-hasher"))]
+# {
+let etag5 = EntityTag::from_file_meta(&std::fs::File::open("tests/data/P1060382.JPG").unwrap().metadata().unwrap());
+assert_eq!(r#"W/"wMRGbc5gr2L/keSkynH4KQ""#, etag5.to_string());
+# }
+
+# #[cfg(all(feature = "std", feature = "strong-hasher"))]
+# {
+let etag6 = EntityTag::from_file_meta_strong(&std::fs::File::open("tests/data/P1060382.JPG").unwrap().metadata().unwrap());
+assert_eq!(r#""mmkAoOwMqROVvws3tlxJ9tIInflE3JGuOCn1REERmPo""#, etag6.to_string());
 # }
 ```
 
@@ -36,6 +51,10 @@ Disable the default features to compile this crate without std.
 version = "*"
 default-features = false
 ```
+
+## Hashers
+
+Generated ETag constructors are optional. Enable `weak-hasher` to use XXH3-128 weak ETag generation and `strong-hasher` to use BLAKE3-256 strong ETag generation.
 */
 
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -47,17 +66,67 @@ mod entity_tag_error;
 use alloc::{borrow::Cow, string::String};
 use core::{
     fmt::{self, Display, Formatter, Write},
-    hash::Hasher,
+    str::FromStr,
 };
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", any(feature = "weak-hasher", feature = "strong-hasher")))]
 use std::fs::Metadata;
-use std::str::FromStr;
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", any(feature = "weak-hasher", feature = "strong-hasher")))]
 use std::time::UNIX_EPOCH;
 
-use base64::Engine;
+#[cfg(any(feature = "weak-hasher", feature = "strong-hasher"))]
+use base64::{Engine, engine::general_purpose::STANDARD_NO_PAD};
 pub use entity_tag_error::EntityTagError;
-use highway::HighwayHasher;
+#[cfg(feature = "weak-hasher")]
+use xxhash_rust::xxh3::xxh3_128;
+
+#[cfg(feature = "strong-hasher")]
+#[inline]
+fn encode_blake3_256(data: &[u8]) -> String {
+    STANDARD_NO_PAD.encode(blake3::hash(data).as_bytes())
+}
+
+#[cfg(feature = "weak-hasher")]
+#[inline]
+fn encode_xxh3_128_data(data: &[u8]) -> String {
+    encode_xxh3_128(xxh3_128(data))
+}
+
+#[cfg(feature = "weak-hasher")]
+#[inline]
+fn encode_xxh3_128(hash: u128) -> String {
+    STANDARD_NO_PAD.encode(hash.to_be_bytes())
+}
+
+#[cfg(all(feature = "std", any(feature = "weak-hasher", feature = "strong-hasher")))]
+fn encode_file_meta<F>(metadata: &Metadata, encode: F) -> String
+where
+    F: Fn(&[u8]) -> String, {
+    let len_bytes = metadata.len().to_le_bytes();
+
+    if let Ok(modified_time) = metadata.modified() {
+        match modified_time.duration_since(UNIX_EPOCH) {
+            Ok(time) => {
+                let mut bytes = [0; 24];
+
+                bytes[..8].copy_from_slice(&len_bytes);
+                bytes[8..].copy_from_slice(&time.as_nanos().to_le_bytes());
+
+                encode(&bytes)
+            },
+            Err(err) => {
+                let mut bytes = [0; 25];
+
+                bytes[..8].copy_from_slice(&len_bytes);
+                bytes[8] = b'-';
+                bytes[9..].copy_from_slice(&err.duration().as_nanos().to_le_bytes());
+
+                encode(&bytes)
+            },
+        }
+    } else {
+        encode(&len_bytes)
+    }
+}
 
 /// An entity tag, defined in [RFC7232](https://tools.ietf.org/html/rfc7232#section-2.3).
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
@@ -258,42 +327,47 @@ impl<'t> EntityTag<'t> {
         })
     }
 
-    /// Construct a strong EntityTag.
+    #[cfg(feature = "weak-hasher")]
+    /// Construct a weak EntityTag from data with an XXH3-128 fingerprint.
     #[inline]
     pub fn from_data<S: ?Sized + AsRef<[u8]>>(data: &S) -> EntityTag<'static> {
-        let mut hasher = HighwayHasher::default();
-        hasher.write(data.as_ref());
+        let tag = encode_xxh3_128_data(data.as_ref());
 
-        let tag =
-            base64::engine::general_purpose::STANDARD_NO_PAD.encode(hasher.finish().to_le_bytes());
+        EntityTag {
+            weak: true, tag: Cow::from(tag)
+        }
+    }
+
+    #[cfg(feature = "strong-hasher")]
+    /// Construct a strong EntityTag from data with a BLAKE3-256 digest.
+    #[inline]
+    pub fn from_data_strong<S: ?Sized + AsRef<[u8]>>(data: &S) -> EntityTag<'static> {
+        let tag = encode_blake3_256(data.as_ref());
 
         EntityTag {
             weak: false, tag: Cow::from(tag)
         }
     }
 
-    #[cfg(feature = "std")]
-    /// Construct a weak EntityTag.
+    #[cfg(all(feature = "std", feature = "weak-hasher"))]
+    /// Construct a weak EntityTag from file metadata with an XXH3-128 fingerprint.
+    #[inline]
     pub fn from_file_meta(metadata: &Metadata) -> EntityTag<'static> {
-        let mut hasher = HighwayHasher::default();
-
-        hasher.write(&metadata.len().to_le_bytes());
-
-        if let Ok(modified_time) = metadata.modified() {
-            match modified_time.duration_since(UNIX_EPOCH) {
-                Ok(time) => hasher.write(&time.as_nanos().to_le_bytes()),
-                Err(err) => {
-                    hasher.write(b"-");
-                    hasher.write(&err.duration().as_nanos().to_le_bytes());
-                },
-            }
-        }
-
-        let tag =
-            base64::engine::general_purpose::STANDARD_NO_PAD.encode(hasher.finish().to_le_bytes());
+        let tag = encode_file_meta(metadata, encode_xxh3_128_data);
 
         EntityTag {
             weak: true, tag: Cow::from(tag)
+        }
+    }
+
+    #[cfg(all(feature = "std", feature = "strong-hasher"))]
+    /// Construct a strong EntityTag from file metadata with a BLAKE3-256 digest.
+    #[inline]
+    pub fn from_file_meta_strong(metadata: &Metadata) -> EntityTag<'static> {
+        let tag = encode_file_meta(metadata, encode_blake3_256);
+
+        EntityTag {
+            weak: false, tag: Cow::from(tag)
         }
     }
 }

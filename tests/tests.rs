@@ -140,7 +140,12 @@ fn get_tag() {
     assert_eq!("foobar", EntityTag::with_str(false, "foobar").unwrap().get_tag());
     assert_eq!("owned", EntityTag::with_string(false, "owned").unwrap().get_tag());
     assert_eq!("parsed", EntityTag::from_str("\"parsed\"").unwrap().get_tag());
-    assert_eq!("SE+HLI9tiaw", EntityTag::from_data(&[1, 2, 3, 4]).get_tag());
+
+    #[cfg(feature = "weak-hasher")]
+    assert_eq!(22, EntityTag::from_data(&[1, 2, 3, 4]).get_tag().len());
+
+    #[cfg(feature = "strong-hasher")]
+    assert_eq!(43, EntityTag::from_data_strong(&[1, 2, 3, 4]).get_tag().len());
 }
 
 #[test]
@@ -159,12 +164,25 @@ fn etag_parse_failures() {
     assert_eq!(Err(EntityTagError::MissingClosingDoubleQuote), EntityTag::from_str("\"no-dquote"));
 }
 
+#[cfg(feature = "weak-hasher")]
 #[test]
 fn from_data() {
-    assert_eq!("\"SE+HLI9tiaw\"", EntityTag::from_data(&[1, 2, 3, 4]).to_string());
+    let etag = EntityTag::from_data(&[1, 2, 3, 4]);
+
+    assert!(etag.weak);
+    assert_eq!(22, etag.get_tag().len());
 }
 
-#[cfg(feature = "std")]
+#[cfg(feature = "strong-hasher")]
+#[test]
+fn from_data_strong() {
+    let etag = EntityTag::from_data_strong(&[1, 2, 3, 4]);
+
+    assert!(!etag.weak);
+    assert_eq!(43, etag.get_tag().len());
+}
+
+#[cfg(all(feature = "std", feature = "weak-hasher"))]
 #[test]
 fn from_file_meta() {
     let file = std::fs::File::open("tests/data/P1060382.JPG").unwrap();
@@ -174,4 +192,18 @@ fn from_file_meta() {
     let etag = EntityTag::from_file_meta(&metadata);
 
     assert!(etag.weak);
+    assert_eq!(22, etag.get_tag().len());
+}
+
+#[cfg(all(feature = "std", feature = "strong-hasher"))]
+#[test]
+fn from_file_meta_strong() {
+    let file = std::fs::File::open("tests/data/P1060382.JPG").unwrap();
+
+    let metadata = file.metadata().unwrap();
+
+    let etag = EntityTag::from_file_meta_strong(&metadata);
+
+    assert!(!etag.weak);
+    assert_eq!(43, etag.get_tag().len());
 }
