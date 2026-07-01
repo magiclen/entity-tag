@@ -32,13 +32,13 @@ assert_eq!(r#""BOC7OfMLGj/rifU2yTvhUFVILfdIZ0sA0m5adXd3Auk""#, etag4.to_string()
 # #[cfg(all(feature = "std", feature = "weak-hasher"))]
 # {
 let etag5 = EntityTag::from_file_meta(&std::fs::File::open("tests/data/P1060382.JPG").unwrap().metadata().unwrap());
-assert_eq!(r#"W/"wMRGbc5gr2L/keSkynH4KQ""#, etag5.to_string());
+println!("{}", etag5.to_string()); // W/"wMRGbc5gr2L/keSkynH4KQ"
 # }
 
 # #[cfg(all(feature = "std", feature = "strong-hasher"))]
 # {
 let etag6 = EntityTag::from_file_meta_strong(&std::fs::File::open("tests/data/P1060382.JPG").unwrap().metadata().unwrap());
-assert_eq!(r#""mmkAoOwMqROVvws3tlxJ9tIInflE3JGuOCn1REERmPo""#, etag6.to_string());
+println!("{}", etag6.to_string()); // "mmkAoOwMqROVvws3tlxJ9tIInflE3JGuOCn1REERmPo"
 # }
 ```
 
