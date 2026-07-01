@@ -1,6 +1,7 @@
-use core::fmt::{self, Display, Formatter};
-#[cfg(feature = "std")]
-use std::error::Error;
+use core::{
+    error::Error,
+    fmt::{self, Display, Formatter},
+};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 /// Possible errors of `EntityTag`.
@@ -25,5 +26,4 @@ impl Display for EntityTagError {
     }
 }
 
-#[cfg(feature = "std")]
 impl Error for EntityTagError {}
