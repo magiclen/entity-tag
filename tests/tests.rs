@@ -77,15 +77,15 @@ fn etag_parse_success() {
     );
     assert_eq!(
         EntityTag::with_str(true, "foobar").unwrap(),
-        EntityTag::with_str(true, "foobar").unwrap()
+        EntityTag::with_string(true, "foobar").unwrap()
+    );
+    assert_eq!(
+        EntityTag::with_str(true, "\"foobar\"").unwrap(),
+        EntityTag::with_string(true, "foobar").unwrap()
     );
     assert_eq!(
         EntityTag::with_str(true, "foobar").unwrap(),
-        EntityTag::with_str(true, "\"foobar\"").unwrap()
-    );
-    assert_eq!(
-        EntityTag::with_str(true, "foobar").unwrap(),
-        EntityTag::with_str(true, "\"foobar\"").unwrap()
+        EntityTag::with_string(true, "\"foobar\"").unwrap()
     );
 
     assert_eq!(EntityTag::from_str("\"\"").unwrap(), EntityTag::from_string("\"\"").unwrap());

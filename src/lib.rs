@@ -16,6 +16,37 @@ assert_eq!(false, etag2.weak);
 
 assert!(etag1.weak_eq(&etag2));
 assert!(etag1.strong_ne(&etag2));
+```
+
+## No Std
+
+Disable the default features to compile this crate without std.
+
+```toml
+[dependencies.entity-tag]
+version = "*"
+default-features = false
+```
+
+## Hashers
+
+Generated ETag constructors are optional.
+Enable `weak-hasher` to use XXH3-128 weak ETag generation and `strong-hasher` to use BLAKE3-256 strong ETag generation.
+
+```toml
+[dependencies.entity-tag]
+version = "*"
+features = ["weak-hasher", "strong-hasher"]
+```
+
+File metadata tags use only the file length and modification time, not the file content.
+If the modification time is not available, they use only the file length.
+
+For strong validation, prefer `from_data_strong` with the bytes sent in the response.
+Only use `from_file_meta_strong` if the metadata values reliably distinguish every version and representation of the resource.
+
+```rust
+use entity_tag::EntityTag;
 
 # #[cfg(feature = "weak-hasher")]
 # {
@@ -31,30 +62,18 @@ assert_eq!(r#""BOC7OfMLGj/rifU2yTvhUFVILfdIZ0sA0m5adXd3Auk""#, etag4.to_string()
 
 # #[cfg(all(feature = "std", feature = "weak-hasher"))]
 # {
-let etag5 = EntityTag::from_file_meta(&std::fs::File::open("tests/data/P1060382.JPG").unwrap().metadata().unwrap());
-println!("{}", etag5.to_string()); // W/"wMRGbc5gr2L/keSkynH4KQ"
+let metadata = std::fs::metadata(std::env::current_exe().unwrap()).unwrap();
+let etag5 = EntityTag::from_file_meta(&metadata);
+println!("{}", etag5);
 # }
 
 # #[cfg(all(feature = "std", feature = "strong-hasher"))]
 # {
-let etag6 = EntityTag::from_file_meta_strong(&std::fs::File::open("tests/data/P1060382.JPG").unwrap().metadata().unwrap());
-println!("{}", etag6.to_string()); // "mmkAoOwMqROVvws3tlxJ9tIInflE3JGuOCn1REERmPo"
+let metadata = std::fs::metadata(std::env::current_exe().unwrap()).unwrap();
+let etag6 = EntityTag::from_file_meta_strong(&metadata);
+println!("{}", etag6);
 # }
 ```
-
-## No Std
-
-Disable the default features to compile this crate without std.
-
-```toml
-[dependencies.entity-tag]
-version = "*"
-default-features = false
-```
-
-## Hashers
-
-Generated ETag constructors are optional. Enable `weak-hasher` to use XXH3-128 weak ETag generation and `strong-hasher` to use BLAKE3-256 strong ETag generation.
 */
 
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -128,7 +147,7 @@ where
     }
 }
 
-/// An entity tag, defined in [RFC7232](https://tools.ietf.org/html/rfc7232#section-2.3).
+/// An entity tag, defined in [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110#section-8.8.3).
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
 pub struct EntityTag<'t> {
     /// Whether to have a weakness indicator.
@@ -225,9 +244,9 @@ impl<'t> EntityTag<'t> {
         weak: bool,
         tag: S,
     ) -> Result<EntityTag<'static>, EntityTagError> {
-        let quoted = Self::check_tag(tag.as_ref())?;
+        let mut tag: String = tag.into();
 
-        let mut tag = tag.into();
+        let quoted = Self::check_tag(&tag)?;
 
         if quoted {
             tag.remove(tag.len() - 1);
@@ -278,8 +297,10 @@ impl<'t> EntityTag<'t> {
     pub fn from_string<S: AsRef<str> + Into<String>>(
         etag: S,
     ) -> Result<EntityTag<'static>, EntityTagError> {
+        let mut tag: String = etag.into();
+
         let weak = {
-            let s = etag.as_ref();
+            let s = tag.as_str();
 
             let (weak, opaque_tag) = if let Some(opaque_tag) = s.strip_prefix("W/") {
                 (true, opaque_tag)
@@ -291,8 +312,6 @@ impl<'t> EntityTag<'t> {
 
             weak
         };
-
-        let mut tag = etag.into();
 
         tag.remove(tag.len() - 1);
 
@@ -329,6 +348,8 @@ impl<'t> EntityTag<'t> {
 
     #[cfg(feature = "weak-hasher")]
     /// Construct a weak EntityTag from data with an XXH3-128 fingerprint.
+    ///
+    /// Requires the `weak-hasher` feature.
     #[inline]
     pub fn from_data<S: ?Sized + AsRef<[u8]>>(data: &S) -> EntityTag<'static> {
         let tag = encode_xxh3_128_data(data.as_ref());
@@ -340,6 +361,8 @@ impl<'t> EntityTag<'t> {
 
     #[cfg(feature = "strong-hasher")]
     /// Construct a strong EntityTag from data with a BLAKE3-256 digest.
+    ///
+    /// Requires the `strong-hasher` feature.
     #[inline]
     pub fn from_data_strong<S: ?Sized + AsRef<[u8]>>(data: &S) -> EntityTag<'static> {
         let tag = encode_blake3_256(data.as_ref());
@@ -351,6 +374,10 @@ impl<'t> EntityTag<'t> {
 
     #[cfg(all(feature = "std", feature = "weak-hasher"))]
     /// Construct a weak EntityTag from file metadata with an XXH3-128 fingerprint.
+    ///
+    /// Requires the `std` and `weak-hasher` features.
+    /// This method hashes the file length and modification time, not the file content.
+    /// If the modification time is not available, it hashes only the file length.
     #[inline]
     pub fn from_file_meta(metadata: &Metadata) -> EntityTag<'static> {
         let tag = encode_file_meta(metadata, encode_xxh3_128_data);
@@ -362,6 +389,14 @@ impl<'t> EntityTag<'t> {
 
     #[cfg(all(feature = "std", feature = "strong-hasher"))]
     /// Construct a strong EntityTag from file metadata with a BLAKE3-256 digest.
+    ///
+    /// Requires the `std` and `strong-hasher` features.
+    ///
+    /// # Strong Validation
+    /// This method hashes the file length and modification time, not the file content.
+    /// If the modification time is not available, it hashes only the file length.
+    /// Only use this method if these metadata values change for every content change and distinguish all representations of the same resource.
+    /// Otherwise, use [`Self::from_data_strong`] with the bytes sent in the response.
     #[inline]
     pub fn from_file_meta_strong(metadata: &Metadata) -> EntityTag<'static> {
         let tag = encode_file_meta(metadata, encode_blake3_256);
@@ -427,7 +462,8 @@ impl FromStr for EntityTag<'static> {
 
     #[inline]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        EntityTag::from_string(s)
+        // Calls the inherent borrowed parser (inherent methods take priority over trait methods), then copies the tag.
+        EntityTag::from_str(s).map(EntityTag::into_owned)
     }
 }
 

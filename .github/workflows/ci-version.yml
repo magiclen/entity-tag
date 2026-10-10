@@ -34,6 +34,26 @@ jobs:
       - run: cargo test --release ${{ matrix.features }}
       - run: cargo doc --release ${{ matrix.features }}
 
+  features:
+    strategy:
+      fail-fast: false
+      matrix:
+        features:
+          - --features weak-hasher
+          - --features strong-hasher
+          - --no-default-features --features weak-hasher
+          - --no-default-features --features strong-hasher
+          - --no-default-features --features weak-hasher,strong-hasher
+    name: Test feature combination (${{ matrix.features }})
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+      - run: cargo test --release ${{ matrix.features }}
+      - run: cargo doc --release ${{ matrix.features }}
+
   MSRV:
     strategy:
       fail-fast: false

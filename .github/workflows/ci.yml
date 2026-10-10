@@ -9,7 +9,7 @@ jobs:
   rustfmt:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: nightly
@@ -47,6 +47,26 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}
+      - run: cargo test ${{ matrix.features }}
+      - run: cargo doc ${{ matrix.features }}
+
+  features:
+    strategy:
+      fail-fast: false
+      matrix:
+        features:
+          - --features weak-hasher
+          - --features strong-hasher
+          - --no-default-features --features weak-hasher
+          - --no-default-features --features strong-hasher
+          - --no-default-features --features weak-hasher,strong-hasher
+    name: Test feature combination (${{ matrix.features }})
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
       - run: cargo test ${{ matrix.features }}
       - run: cargo doc ${{ matrix.features }}
 

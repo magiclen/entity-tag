@@ -1,6 +1,6 @@
 [package]
 name = "entity-tag"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Magic Len <len@magiclen.org>"]
 edition = "2024"
 rust-version = "1.85"
@@ -12,8 +12,11 @@ description = "This crate provides a `EntityTag` structure and functions to deal
 license = "MIT"
 include = ["src/**/*", "Cargo.toml", "README.md", "LICENSE"]
 
+[package.metadata.docs.rs]
+all-features = true
+
 [dependencies]
-base64 = { version = "0.22", default-features = false, features = ["alloc"] }
+base64 = { version = "0.22", default-features = false, features = ["alloc"], optional = true }
 
 blake3 = { version = "1", default-features = false, optional = true }
 xxhash-rust = { version = "0.8", default-features = false, features = ["xxh3"], optional = true }
@@ -23,5 +26,5 @@ default = ["std"]
 
 std = []
 
-weak-hasher = ["dep:xxhash-rust"]
-strong-hasher = ["dep:blake3"]
+weak-hasher = ["dep:base64", "dep:xxhash-rust"]
+strong-hasher = ["dep:base64", "dep:blake3"]
